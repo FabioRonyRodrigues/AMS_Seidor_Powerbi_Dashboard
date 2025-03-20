@@ -1,0 +1,81 @@
+WITH gs1 AS (
+    SELECT 
+        code,
+        COALESCE(main_manager_name, 'Não Identificado') AS main_manager_name,
+        scc.contract_type,
+        CASE
+            -- Exceções
+	        -- Natasha = Renato
+            WHEN main_manager_name = 'Natasha Goncalves Damasio' AND code IN ('CCMSA000000001','COOPA000000002','FUTUR000000013','MILLE000000010','SOSPI000000003','CIACC000000008') 
+                THEN 'Renato Penna'
+            -- Natasha <> Erico
+            WHEN main_manager_name = 'Natasha Goncalves Damasio' AND code NOT IN ('CCMSA000000001','COOPA000000002','FUTUR000000013','MILLE000000010','SOSPI000000003','CIACC000000008') 
+                THEN 'Érico Chiconelli'
+            -- Alex = Jander
+            WHEN main_manager_name = 'Alex Victor da Silva' AND code = 'SUPLE000000025' 
+                THEN 'Jander Marchezini'
+            -- Alex <> Thiago Moreira
+            WHEN main_manager_name = 'Alex Victor da Silva' AND code <> 'SUPLE000000025' 
+                THEN 'Thiago Moreira'
+            -- Daiana = Thiago
+            WHEN main_manager_name = 'Daiana Dalla Vechia' AND code in ('EXAKT000000026','EXAKT000000027','SEIVI000000001','SEIVI000000001') 
+                THEN 'Thiago Moreira'
+            -- Daiana = Erico
+            WHEN main_manager_name = 'Daiana Dalla Vechia' AND code not in ('EXAKT000000026','EXAKT000000027','SEIVI000000001','SEIVI000000001') 
+                THEN 'Érico Chiconelli'
+			when main_manager_name ='Giovana Pinheiro de Moraes da Silva' and code in ('BRUDD000000001') then 'Érico Chiconeli'
+			when main_manager_name ='Giovana Pinheiro de Moraes da Silva' and code in ('CROME000000010','CROME000000013') then 'Thiago Moreira'
+			when main_manager_name ='Giovana Pinheiro de Moraes da Silva' and code in ('LIGAS000000001','LIGAS000000002','LIGAS000000003','LIGAS000000004') then 'Marcos Lucena'
+			when main_manager_name ='Giovana Pinheiro de Moraes da Silva' and code not in ('BRUDD000000001','CROME000000010','CROME000000013','LIGAS000000001','LIGAS000000002','LIGAS000000003','LIGAS000000004') then 'Jander Marchezini'
+			-- Nathan <> Jander
+			when main_manager_name ='Natan Guilherme Alves do Prado' and code in ('CHIES000000001') then 'Marcos Lucena'
+			when main_manager_name ='Natan Guilherme Alves do Prado' and code in ('MEDIA000000013') then 'Marcos Lucena'
+			when main_manager_name ='Natan Guilherme Alves do Prado' and code in ('MONST000000004','PEDRA000000018') then 'Érico Chiconeli'
+			when main_manager_name ='Natan Guilherme Alves do Prado' and code in ('SAMAR000000006') then 'Renato Penna'
+			-- Nathan = Jander
+			when main_manager_name ='Natan Guilherme Alves do Prado' and code not in ('CHIES000000001','MEDIA000000013','MONST000000004','PEDRA000000018','SAMAR000000006') then 'Jander Marchezini'
+            -- Regras Globais
+            WHEN main_manager_name IN ('Bruno Favalessa Ferreira', 'Bruno Sanches Sandrini', 'Cecilia Lorena Silva Santos', 'Cristiano Anastacio Limp', 
+                                       'Daniela Caliman Menezes', 'Edilson De Oliveira Gama', 'Eduardo Pereira Faggion', 'Evelyn Reis Pacheco', 'Jorge Augusto Damasceno Aguiar', 
+                                       'Mateus Maciel Nogueira', 'Natasha Goncalves Damasio', 'Rodrigo Arent', 'Erico Augusto Peres Chiconeli') 
+                THEN 'Érico Chiconeli'
+            WHEN main_manager_name IN ('Carlos Eduardo Fernandes Moreira', 'Caroline Fernandes Lopes', 'Deborah Emilia Fernandes', 'Deny Akamine', 'Eduardo Cecchetti de Souza', 
+                                       'Giovana Pinheiro de Moraes da Silva', 'Natan Guilherme Alves do Prado','Maria Vanessa Sabino Silva', 'Raiana Araujo de Oliveira', 'Raphael De Oliveira Duarte', 
+                                       'Ricardo De Souza Vieira', 'Jander Marchezini') 
+                THEN 'Jander Marchezini'
+            WHEN main_manager_name IN ('Camilo Lelis Veloso', 'Fernanda Ferreira de Almeida', 'Ingrid Mendes Miranda', 'Patrick Alexander de Freitas Faria', 'Paula Alves Passarelli', 
+                                       'Ticiana Bevitorio Campos Stein', 'Wellison Padua Gomes Junior', 'Marcos Carvalho Lucena') 
+                THEN 'Marcos Lucena'
+            WHEN main_manager_name IN ('Camila Yume Hotta Donishi Oda', 'Carlos Henrique Souza Guedes', 'Cristiano De Jesus Oliveira', 'Layla Breda de Jesus', 'Salomao Alves Lopes', 
+                                       'Renato Rello Penna') 
+                THEN 'Renato Penna'
+            WHEN main_manager_name IN ('Lubianne Tosetto', 'Bruno Miranda Tertuliano', 'Bernardo Silva de Lima', 'Leila Santana Ferreira Figueredo', 'Silvia Cristina Arouche', 
+                                       'Ana Paula do Vale Feitosa', 'Hugo Santos Kavaguchi', 'Paola Cavalcante Ferreira', 'Alessandro Ferreira Barros', 'Andre Nardin', 
+                                       'Angela Craveiro Rodrigues Dos Santos Amigo Amigo', 'Bruno Simonini da Luz', 'Camilo Santos Lessa Meijon Campolina', 'Cleusa Deus da Trindade', 
+                                       'Daniel Lucca Mesquita', 'Elaine Marcia Viana Da Silva', 'George Henrique Velardi de Aguiar', 'Heslei Ferreira Rezende', 'Jucimara Elias Viana', 
+                                       'Lucia Kazuko Shimabukuro', 'Marcio Norberto dos Santos', 'Martin Sansalone ARGENTINA', 'Matheus Magalhaes Bernardes Gonçalves', 'Oldack Sergio Rabelo Coutinho', 
+                                       'Romenia Cavalcanti de Assis Quirino', 'Wagner Peres Pereira') 
+                THEN 'Outros - AMS'
+            ELSE CONCAT('Outros - ', contract_type)
+        END AS gs_senior
+    FROM prd.stg_ctr_contract scc
+),
+gs2 AS (
+    SELECT 
+        code,
+        COALESCE(main_manager_name, 'Não Identificado') AS main_manager_name,
+        scc.contract_type,
+        case when contract_type NOT IN ('AMS','FAST TRACK','INTERNO')
+        THEN CONCAT('Outros - ', contract_type)
+        else 'Thiago Moreira'
+        end as gs_senior
+    FROM prd.stg_ctr_contract scc
+)
+SELECT * FROM gs1
+UNION ALL
+SELECT * FROM gs2;
+
+
+// lander > Thiago
+// Gutember > Thiago
+// Rodrigo Silva de Almeida dos Santos
