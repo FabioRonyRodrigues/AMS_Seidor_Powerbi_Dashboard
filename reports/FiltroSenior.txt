@@ -116,8 +116,6 @@ SELECT * FROM gs1
 where gs_senior <> 'Outros - Interno'
 UNION ALL
 SELECT * FROM gs2
-where gs_senior <> 'Outros - Interno';
-
-
+where gs_senior <> 'Outros - Interno'
 
 
