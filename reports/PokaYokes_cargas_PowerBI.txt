@@ -1,0 +1,91 @@
+let
+    // Conecta ao banco de dados MySQL na máquina local (127.0.0.1) na porta 3306,
+    // e acessa o banco de dados "prd". Define para retornar apenas este banco.
+    Fonte = MySQL.Database("127.0.0.1:3306", "prd", [ReturnSingleDatabase=true]),
+
+    // Define uma consulta SQL complexa para analisar variações de registros nas tabelas de interesse
+    ConsultaSQL = "
+        -- Cria uma CTE (Common Table Expression) chamada 'cte_previous_counts' que obtém
+        -- a contagem de registros por data, incluindo a contagem anterior (lag) por tabela
+        WITH cte_previous_counts AS (
+            SELECT
+                Table_Name,
+                Data,
+                Record_Count,
+                LAG(Record_Count, 1) OVER (PARTITION BY Table_Name ORDER BY Data) AS Prev_Record_Count
+            FROM prd.fato_auditoria_hop
+        )
+        
+        -- Seleciona os dados da CTE, focando apenas no registro mais recente por tabela
+        SELECT 
+            Table_Name,
+            Data,
+            Record_Count,
+            Prev_Record_Count,
+            
+            -- Resultado baseado na comparação com a contagem anterior:
+            -- 1 = aumento, 2 = redução, 0 = sem variação
+            CASE
+                WHEN Record_Count > Prev_Record_Count THEN 1
+                WHEN Record_Count < Prev_Record_Count THEN 2
+                ELSE 0
+            END AS Result,
+            
+            -- Calcula a variação percentual entre o registro atual e o anterior
+            CASE
+                WHEN Prev_Record_Count IS NULL THEN NULL
+                WHEN Prev_Record_Count = 0 THEN NULL
+                ELSE ROUND(((Record_Count - Prev_Record_Count) / Prev_Record_Count), 2)
+            END AS Percentual_Variacao,
+            
+            -- Status textual da variação
+            CASE
+                WHEN Prev_Record_Count IS NULL THEN 'Sem dados anteriores'
+                WHEN Record_Count = 0 THEN 'Erro: Record_Count não pode ser 0'
+                WHEN Record_Count < Prev_Record_Count THEN 
+                    CASE 
+                        WHEN ((Record_Count - Prev_Record_Count) / Prev_Record_Count) BETWEEN -0.10 AND 0.10
+                        THEN 'Variação normal'
+                        ELSE 'Erro: Table_Name_x tem menos registros que o anterior'
+                    END
+                ELSE 'Variação normal'
+            END AS Status,
+
+            -- Valida se a variação percentual está dentro dos limites para tabelas específicas
+            CASE
+                WHEN Prev_Record_Count IS NULL THEN 'Sem dados anteriores'
+                WHEN Prev_Record_Count = 0 THEN 'Erro: Record_Count anterior é zero'
+                WHEN Table_Name IN ('Fato_sla','stg_ctr_contract','dim_pep_mutuo','stg_fluxo_receita','stg_timesheets_horas_mensal')
+                    AND ((Record_Count - Prev_Record_Count) / Prev_Record_Count < -0.10 
+                      OR (Record_Count - Prev_Record_Count) / Prev_Record_Count > 0.10)
+                THEN 'Erro: Percentual fora do intervalo'
+                ELSE 'Todos os percentuais respeitam o intervalo'
+            END AS Percentual_Status
+
+        FROM (
+            -- Cria uma subconsulta que adiciona um número de linha para pegar o registro mais recente (rn = 1)
+            SELECT *,
+                   ROW_NUMBER() OVER (PARTITION BY Table_Name ORDER BY Data DESC) AS rn
+            FROM cte_previous_counts
+            WHERE Table_Name IN ('Fato_sla','stg_ctr_contract','dim_pep_mutuo','stg_fluxo_receita','stg_timesheets_horas_mensal')
+        ) t
+        WHERE t.rn = 1;
+    ",
+
+    // Executa a consulta SQL definida acima
+    Resultado = MySQL.Database("127.0.0.1:3306", "prd", [Query=ConsultaSQL]),
+
+    // Altera o tipo da coluna Percentual_Variacao para tipo percentual
+    #"Tipo Alterado" = Table.TransformColumnTypes(Resultado,{{"Percentual_Variacao", Percentage.Type}}),
+   
+    // Verifica se existe algum valor de Percentual_Variacao fora do intervalo de -10% a +10%
+    VerificarPercentuais = 
+        if List.ContainsAny(
+            List.Transform(#"Tipo Alterado"[Percentual_Variacao], each _ < -0.10 or _ > 0.10), 
+            {true}
+        ) then
+            "Erro: Percentual fora do intervalo"  // Mensagem de erro se houver valores fora do intervalo
+        else 
+            "Todos os percentuais estão dentro do intervalo"  // Caso contrário, tudo está ok
+in
+    VerificarPercentuais  // Resultado final da consulta, retornando apenas a verificação
